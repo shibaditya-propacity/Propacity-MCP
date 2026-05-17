@@ -22,24 +22,78 @@ MCP servers expose tools that AI assistants can call just like functions. Once t
 | Tool | What it returns |
 |---|---|
 | `get_company_overview` | Title, meta description, tagline, headquarters, founded year |
-| `get_social_links` | LinkedIn, Twitter/X, Instagram, YouTube URLs |
+| `get_social_links` | LinkedIn followers, Instagram, Twitter/X, YouTube URLs |
 | `get_funding_and_investors` | Total funding raised, rounds, investor list, valuation |
-| `get_team_info` | Founders and key team members with roles and LinkedIn URLs |
+| `get_team_info` | Verified founders with roles, LinkedIn URLs, employee count |
 | `get_latest_news` | Recent press articles sorted newest first |
 | `get_full_profile` | All of the above in a single merged JSON response |
 
 ---
 
-## Quick start
+## Install
 
-### Option 1 — Claude Desktop (recommended)
+```bash
+npm install -g @shibadityadeb-propacity/propacity-mcp
+```
 
-**Step 1.** Open (or create) the Claude Desktop config file:
+### Update to latest version
+
+```bash
+npm install -g @shibadityadeb-propacity/propacity-mcp@latest
+```
+
+---
+
+## CLI commands
+
+Once installed, use directly from your terminal — no JSON, no pipes:
+
+```bash
+propacity-mcp overview    # Company title, description, HQ, founded year
+propacity-mcp social      # LinkedIn followers, Instagram, Twitter, YouTube
+propacity-mcp funding     # Funding rounds, investors, total raised
+propacity-mcp team        # Founders with roles + total employee count
+propacity-mcp news        # Latest news from Google News RSS
+propacity-mcp profile     # Everything above in one call
+propacity-mcp --help      # Show all commands
+```
+
+### Example output
+
+```
+propacity-mcp social
+
+──────────────────────────────────────────────────
+ Social Links
+──────────────────────────────────────────────────
+ Status : OK
+ Fetched: 2025-05-17T06:47:30.497Z
+──────────────────────────────────────────────────
+
+ Linkedin:
+   Followers: 39106
+   Employees: 102
+   Location: Delhi
+   Url: https://in.linkedin.com/company/propacity
+ Instagram:
+   Url: https://www.instagram.com/propacity.in/
+   Note: Instagram restricts public follower data
+ Twitter:
+   Url: https://twitter.com/propacity_in
+ Youtube:
+   Url: https://www.youtube.com/@propacity
+```
+
+---
+
+## Claude Desktop setup
+
+**Step 1.** Open (or create) the config file:
 
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
-**Step 2.** Add the following and save:
+**Step 2.** Add this and save:
 
 ```json
 {
@@ -52,32 +106,9 @@ MCP servers expose tools that AI assistants can call just like functions. Once t
 }
 ```
 
-**Step 3.** Restart Claude Desktop. You should see a hammer icon — click it to confirm the 6 Propacity tools are listed.
+**Step 3.** Restart Claude Desktop. Click the hammer icon to confirm all 6 Propacity tools are listed.
 
-No installation required — `npx` downloads and runs the package automatically.
-
----
-
-### Option 2 — Install globally + use from terminal
-
-```bash
-npm install -g @shibadityadeb-propacity/propacity-mcp
-```
-
-Then run commands directly from your terminal — no JSON, no pipes:
-
-```bash
-propacity-mcp overview    # Company title, description, HQ, founded year
-propacity-mcp social      # LinkedIn, Twitter, Instagram, YouTube
-propacity-mcp funding     # Funding rounds, investors, total raised
-propacity-mcp team        # Founders and key team members
-propacity-mcp news        # Latest news from Google News
-propacity-mcp profile     # Everything above in one call
-
-propacity-mcp --help      # Show all commands
-```
-
-Or use the global binary in Claude Desktop config:
+If you installed globally, you can also use:
 
 ```json
 {
@@ -88,16 +119,6 @@ Or use the global binary in Claude Desktop config:
   }
 }
 ```
-
----
-
-### Option 3 — Run directly (for testing)
-
-```bash
-npx @shibadityadeb-propacity/propacity-mcp
-```
-
-The server starts and listens on stdio. Send a JSON-RPC `tools/list` request to see all registered tools.
 
 ---
 
@@ -119,53 +140,49 @@ Every tool returns the same consistent envelope:
 - `data` — the actual payload (shape varies per tool)
 - `sources` — every URL that was scraped
 - `fetched_at` — ISO timestamp of when the fetch ran
-- `errors` — list of non-fatal errors (partial failures); data is still returned
+- `errors` — list of non-fatal partial failures; data is still returned
 
 ---
 
 ## How it works
 
 ```
-Claude Desktop
-     │  JSON-RPC over stdio
+Terminal / Claude Desktop
+     │
      ▼
-src/index.js          ← MCP server, registers all 6 tools
+src/index.js          ← CLI mode (args) or MCP server (no args, stdio)
      │
      ▼
 src/fetchers.js       ← scraping logic (axios + cheerio)
      │
-     ├── propacity.in          (homepage + about page)
-     ├── news.google.com/rss   (Google News RSS — no JS rendering needed)
-     ├── crunchbase.com        (funding — may 403, falls back to static data)
-     └── yourstory.com         (funding/investors — may 403, falls back)
+     ├── in.linkedin.com/company/propacity   (followers, employees, location)
+     ├── instagram.com/propacity.in          (profile — Meta restricts data)
+     ├── news.google.com/rss                 (Google News RSS, no JS needed)
+     ├── crunchbase.com                      (funding — 403, uses static data)
+     └── yourstory.com                       (funding — 403, uses static data)
 ```
 
 Key design decisions:
 
-- **All HTTP requests** have a 10 s timeout and a browser-like `User-Agent`
-- **`get_full_profile`** fires all 5 fetchers in parallel via `Promise.allSettled` — one failing source never blocks the rest
-- **Graceful degradation** — if a site blocks scraping (Crunchbase/YourStory return 403), the tool returns known static data plus an error note instead of crashing
-- **Google News RSS** is used for news instead of JS-rendered sites (YourStory, Inc42, Entrackr) because RSS is server-rendered XML
+- **Dual mode** — pass a command (`propacity-mcp overview`) for CLI output; no args = MCP stdio server for Claude Desktop
+- **All HTTP requests** have a 12 s timeout, browser-like headers, and legacy TLS support
+- **`get_full_profile`** fires all 5 fetchers in parallel via `Promise.allSettled`
+- **Graceful degradation** — blocked sources (Crunchbase/YourStory 403) fall back to known public data with a note
 
 ---
 
 ## Local development
 
 ```bash
-# Clone and install
 git clone https://github.com/shibadityadeb-propacity/propacity-mcp.git
 cd propacity-mcp
 npm install
 
-# Run the MCP server
-node src/index.js
+# Test a single fetcher
+node src/index.js overview
 
-# Quick tool test (no Claude Desktop needed)
-node --input-type=module <<'EOF'
-import { fetchCompanyOverview, fetchLatestNews } from './src/fetchers.js';
-console.log(await fetchCompanyOverview());
-console.log(await fetchLatestNews());
-EOF
+# Run as MCP server (for Claude Desktop)
+node src/index.js
 ```
 
 ### Project structure
@@ -173,8 +190,8 @@ EOF
 ```
 propacity-mcp/
 ├── src/
-│   ├── index.js      # MCP server — tool registration + stdio transport
-│   └── fetchers.js   # All scraping functions (imported by index.js)
+│   ├── index.js      # CLI + MCP server entry point
+│   └── fetchers.js   # All scraping functions
 ├── package.json
 ├── .npmignore
 └── README.md
@@ -182,7 +199,7 @@ propacity-mcp/
 
 ---
 
-## Known founders
+## Founders
 
 | Name | Role | LinkedIn |
 |---|---|---|
@@ -195,10 +212,7 @@ propacity-mcp/
 ## Publishing a new version
 
 ```bash
-# Bump version (patch / minor / major)
-npm version patch
-
-# Publish to npm
+npm version patch --no-git-tag-version
 npm publish --access public
 ```
 

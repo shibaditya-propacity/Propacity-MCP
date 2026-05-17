@@ -1,6 +1,6 @@
 {
   "name": "@shibadityadeb-propacity/propacity-mcp",
-  "version": "1.0.3",
+  "version": "1.0.6",
   "description": "MCP server for fetching real-time data about Propacity (propacity.in)",
   "type": "module",
   "main": "src/index.js",
