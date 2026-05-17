@@ -1,0 +1,21 @@
+{
+  "name": "@shibadityadeb-propacity/propacity-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for fetching real-time data about Propacity (propacity.in)",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "propacity-mcp": "src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "keywords": ["mcp", "propacity", "model-context-protocol"],
+  "author": "Shibaditya Deb",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "axios": "^1.7.0",
+    "cheerio": "^1.0.0"
+  }
+}
