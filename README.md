@@ -58,13 +58,26 @@ No installation required — `npx` downloads and runs the package automatically.
 
 ---
 
-### Option 2 — Install globally
+### Option 2 — Install globally + use from terminal
 
 ```bash
 npm install -g @shibadityadeb-propacity/propacity-mcp
 ```
 
-Then update your Claude Desktop config to use the installed binary:
+Then run commands directly from your terminal — no JSON, no pipes:
+
+```bash
+propacity-mcp overview    # Company title, description, HQ, founded year
+propacity-mcp social      # LinkedIn, Twitter, Instagram, YouTube
+propacity-mcp funding     # Funding rounds, investors, total raised
+propacity-mcp team        # Founders and key team members
+propacity-mcp news        # Latest news from Google News
+propacity-mcp profile     # Everything above in one call
+
+propacity-mcp --help      # Show all commands
+```
+
+Or use the global binary in Claude Desktop config:
 
 ```json
 {
